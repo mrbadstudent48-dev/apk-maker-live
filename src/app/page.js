@@ -2,35 +2,61 @@
 import { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { QRCodeCanvas } from "qrcode.react";
-import { FaAndroid, FaRocket, FaCheckCircle, FaDownload, FaCog, FaChevronDown } from "react-icons/fa";
+import { FaAndroid, FaRocket, FaCheckCircle, FaDownload, FaCog, FaChevronDown, FaExclamationCircle } from "react-icons/fa";
 
 export default function Home() {
     const [url, setUrl] = useState("");
     const [appName, setAppName] = useState("");
     const [logoFile, setLogoFile] = useState(null);
+    const [urlError, setUrlError] = useState(""); // নতুন: URL Error State
 
-    // Advanced Settings (নতুন প্রো-ফিচার)
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [packageName, setPackageName] = useState("com.mycompany.app");
     const [version, setVersion] = useState("1.0.0");
     const [splashColor, setSplashColor] = useState("#FFFFFF");
 
-    // Status Management
     const [status, setStatus] = useState("idle"); 
     const [logs, setLogs] = useState(["> System initialized..."]);
     const [downloadUrl, setDownloadUrl] = useState("");
 
-    // আপনার তথ্য বসান
+    // ================== আপনার তথ্য বসান ==================
     const IMGBB_API_KEY = "a3b7f162039d6ecfb5980f08165110a6";
     const GITHUB_USERNAME = "mrbadstudent48-dev";
     const REPO_NAME = "apk-maker"; 
+    // ====================================================
 
     const terminalEndRef = useRef(null);
     useEffect(() => { terminalEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs]);
     const pushLog = (msg) => setLogs((prev) => [...prev, `> ${msg}`]);
 
+    // স্মার্ট URL ভ্যালিডেশন ফাংশন
+    const validateURL = (input) => {
+        let cleanUrl = input.trim();
+        if (!cleanUrl) return false;
+        // যদি http/https না থাকে, অটো অ্যাড করবে
+        if (!/^https?:\/\//i.test(cleanUrl)) {
+            cleanUrl = "https://" + cleanUrl;
+            setUrl(cleanUrl);
+        }
+        // প্রফেশনাল ডোমেইন চেক (Regex)
+        const urlPattern = new RegExp('^(https?:\\/\\/)?'+ 
+            '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ 
+            '((\\d{1,3}\\.){3}\\d{1,3}))'+ 
+            '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ 
+            '(\\?[;&a-z\\d%_.~+=-]*)?'+ 
+            '(\\#[-a-z\\d_]*)?$','i');
+        return urlPattern.test(cleanUrl) ? cleanUrl : false;
+    };
+
     const startProcess = async () => {
-        if (!url.startsWith("http")) return alert("Invalid URL!");
+        setUrlError("");
+        
+        // ভ্যালিডেশন চেক
+        const finalUrl = validateURL(url);
+        if (!finalUrl) {
+            setUrlError("Please enter a valid website URL (e.g., example.com)");
+            return;
+        }
         if (!appName || !logoFile) return alert("Fill all fields!");
 
         setStatus("building");
@@ -50,7 +76,7 @@ export default function Home() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     action: "start_build",
-                    payload: { url, app_name: appName, icon_url: imgData.data.url, package_name: packageName, version, splash_color: splashColor }
+                    payload: { url: finalUrl, app_name: appName, icon_url: imgData.data.url, package_name: packageName, version, splash_color: splashColor }
                 })
             });
 
@@ -123,15 +149,22 @@ export default function Home() {
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Website URL</label>
-                            <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="https://example.com" />
+                            <input 
+                                type="url" 
+                                value={url} 
+                                onChange={(e) => { setUrl(e.target.value); setUrlError(""); }} 
+                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none transition ${urlError ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`} 
+                                placeholder="example.com" 
+                            />
+                            {urlError && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><FaExclamationCircle /> {urlError}</p>}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">App Name</label>
-                            <input type="text" value={appName} onChange={(e) => setAppName(e.target.value)} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="My Website" />
+                            <input type="text" value={appName} onChange={(e) => setAppName(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="My Website" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">App Icon</label>
-                            <input type="file" accept="image/png, image/jpeg" onChange={(e) => setLogoFile(e.target.files[0])} className="w-full px-4 py-2 border rounded-lg text-sm" />
+                            <input type="file" accept="image/png, image/jpeg" onChange={(e) => setLogoFile(e.target.files[0])} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" />
                         </div>
 
                         {/* Advanced Settings */}
@@ -144,16 +177,16 @@ export default function Home() {
                                 <div className="p-4 bg-gray-50 space-y-3 border-t">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600">Package Name</label>
-                                        <input type="text" value={packageName} onChange={(e) => setPackageName(e.target.value)} className="w-full px-3 py-1.5 border rounded text-sm mt-1" />
+                                        <input type="text" value={packageName} onChange={(e) => setPackageName(e.target.value)} className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm mt-1 outline-none focus:ring-1 focus:ring-indigo-500" />
                                     </div>
                                     <div className="flex gap-4">
                                         <div className="w-1/2">
                                             <label className="block text-xs font-medium text-gray-600">App Version</label>
-                                            <input type="text" value={version} onChange={(e) => setVersion(e.target.value)} className="w-full px-3 py-1.5 border rounded text-sm mt-1" />
+                                            <input type="text" value={version} onChange={(e) => setVersion(e.target.value)} className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm mt-1 outline-none focus:ring-1 focus:ring-indigo-500" />
                                         </div>
                                         <div className="w-1/2">
                                             <label className="block text-xs font-medium text-gray-600">Splash Color</label>
-                                            <input type="color" value={splashColor} onChange={(e) => setSplashColor(e.target.value)} className="w-full h-8 border rounded mt-1 cursor-pointer" />
+                                            <input type="color" value={splashColor} onChange={(e) => setSplashColor(e.target.value)} className="w-full h-8 border border-gray-300 rounded mt-1 cursor-pointer" />
                                         </div>
                                     </div>
                                 </div>
@@ -190,7 +223,7 @@ export default function Home() {
                         <button onClick={() => window.location.href = downloadUrl} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg mb-3 flex items-center justify-center gap-2">
                             <FaDownload /> Download APK
                         </button>
-                        <button onClick={() => { setStatus("idle"); setLogs([]); }} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg">Create Another App</button>
+                        <button onClick={() => { setStatus("idle"); setLogs([]); setUrl(""); setAppName(""); }} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg">Create Another App</button>
                     </div>
                 )}
             </div>
