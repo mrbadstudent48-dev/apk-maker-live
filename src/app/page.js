@@ -20,9 +20,9 @@ export default function Home() {
     const [downloadUrl, setDownloadUrl] = useState("");
 
     // ================== আপনার তথ্য বসান ==================
-    const IMGBB_API_KEY = "আপনার_IMGBB_API_KEY";
-    const GITHUB_USERNAME = "আপনার_গিটহাব_ইউজারনেম";
-    const REPO_NAME = "apk-maker-live"; 
+    const IMGBB_API_KEY = "a3b7f162039d6ecfb5980f08165110a6";
+    const GITHUB_USERNAME = "mrbadstudent48-dev";
+    const REPO_NAME = "apk-maker"; 
     // ====================================================
 
     const terminalEndRef = useRef(null);
