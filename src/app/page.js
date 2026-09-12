@@ -20,9 +20,9 @@ export default function Home() {
     const [downloadUrl, setDownloadUrl] = useState("");
 
     // ================== আপনার তথ্য বসান ==================
-    const IMGBB_API_KEY = "a3b7f162039d6ecfb5980f08165110a6";
-    const GITHUB_USERNAME = "mrbadstudent48-dev";
-    const REPO_NAME = "apk-maker"; 
+    const IMGBB_API_KEY = "a3b7f162039d6ecfb5980f08165110a6"; // এখানে Key দিন
+    const GITHUB_USERNAME = "mrbadstudent48-dev"; // যেমন: mrbadstudent48-dev
+    const REPO_NAME = "apk-maker-live"; 
     // ====================================================
 
     const terminalEndRef = useRef(null);
@@ -58,7 +58,6 @@ export default function Home() {
         setLogs(["> Analyzing target URL..."]);
 
         try {
-            // ১. লাইভ ওয়েবসাইট চেকিং 
             pushLog("[INFO] Verifying if the website is currently LIVE...");
             const checkRes = await fetch("/api/github", {
                 method: "POST", headers: { "Content-Type": "application/json" },
@@ -74,15 +73,13 @@ export default function Home() {
             
             pushLog("[SUCCESS] Website is alive and responding!");
 
-            // ২. লোগো আপলোড 
             pushLog("[INFO] Uploading App Logo to Cloud...");
             const formData = new FormData();
             formData.append("image", logoFile);
             const imgRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
             const imgData = await imgRes.json();
-            if (!imgData.success) throw new Error("Logo upload failed!");
+            if (!imgData.success) throw new Error("Logo upload failed! Check API Key.");
 
-            // ৩. অ্যাপ তৈরি কমান্ড
             pushLog("[INFO] Triggering Build Engine...");
             const triggerRes = await fetch("/api/github", {
                 method: "POST", headers: { "Content-Type": "application/json" },
@@ -98,7 +95,7 @@ export default function Home() {
             setTimeout(fetchRunId, 10000);
         } catch (err) {
             pushLog(`[ERROR] ${err.message}`);
-            setStatus("error");
+            setStatus("error"); // এখন আর গায়েব হবে না!
         }
     };
 
@@ -203,16 +200,28 @@ export default function Home() {
                     </div>
                 )}
 
-                {status === "building" && (
+                {/* এই সেকশনটিতেই ম্যাজিক করা হয়েছে (building এবং error একসাথে) */}
+                {(status === "building" || status === "error") && (
                     <div className="mt-2">
                         <div className="bg-gray-800 rounded-t-lg px-4 py-2 flex items-center justify-between">
                             <span className="text-xs text-gray-400 font-mono">Build Console</span>
                             <div className="flex space-x-2"><div className="w-3 h-3 rounded-full bg-red-500"></div><div className="w-3 h-3 rounded-full bg-yellow-500"></div><div className="w-3 h-3 rounded-full bg-green-500"></div></div>
                         </div>
                         <div className="bg-gray-900 text-green-400 font-mono text-xs p-4 h-48 overflow-y-auto rounded-b-lg text-left leading-relaxed shadow-inner">
-                            {logs.map((log, i) => <div key={i}>{log}</div>)}
+                            {logs.map((log, i) => (
+                                <div key={i} className={log.includes("[ERROR]") ? "text-red-500 font-bold mt-2" : "mt-1"}>
+                                    {log}
+                                </div>
+                            ))}
                             <div ref={terminalEndRef} />
                         </div>
+                        
+                        {/* যদি এরর আসে, তবে এই বাটনটি দেখাবে */}
+                        {status === "error" && (
+                            <button onClick={() => { setStatus("idle"); setLogs([]); }} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg mt-4 shadow-lg transition">
+                                Fix Error & Try Again
+                            </button>
+                        )}
                     </div>
                 )}
 
