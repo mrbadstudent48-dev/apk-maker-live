@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req) {
     const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-    const GITHUB_USERNAME = 'আপনার_গিটহাব_ইউজারনেম'; // আপনারটি দিন
+    const GITHUB_USERNAME = 'mrbadstudent48-dev'; // আপনারটি দিন
     const REPO_NAME = 'apk-maker-live'; 
 
     try {
