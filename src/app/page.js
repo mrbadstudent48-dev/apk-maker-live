@@ -8,7 +8,7 @@ export default function Home() {
     const [url, setUrl] = useState("");
     const [appName, setAppName] = useState("");
     const [logoFile, setLogoFile] = useState(null);
-    const [urlError, setUrlError] = useState(""); // নতুন: URL Error State
+    const [urlError, setUrlError] = useState(""); 
 
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [packageName, setPackageName] = useState("com.mycompany.app");
@@ -16,29 +16,26 @@ export default function Home() {
     const [splashColor, setSplashColor] = useState("#FFFFFF");
 
     const [status, setStatus] = useState("idle"); 
-    const [logs, setLogs] = useState(["> System initialized..."]);
+    const [logs, setLogs] = useState([]);
     const [downloadUrl, setDownloadUrl] = useState("");
 
     // ================== আপনার তথ্য বসান ==================
-    const IMGBB_API_KEY = "a3b7f162039d6ecfb5980f08165110a6";
-    const GITHUB_USERNAME = "mrbadstudent48-dev";
-    const REPO_NAME = "apk-maker"; 
+    const IMGBB_API_KEY = "আপনার_IMGBB_API_KEY";
+    const GITHUB_USERNAME = "আপনার_গিটহাব_ইউজারনেম";
+    const REPO_NAME = "apk-maker-live"; 
     // ====================================================
 
     const terminalEndRef = useRef(null);
     useEffect(() => { terminalEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs]);
     const pushLog = (msg) => setLogs((prev) => [...prev, `> ${msg}`]);
 
-    // স্মার্ট URL ভ্যালিডেশন ফাংশন
     const validateURL = (input) => {
         let cleanUrl = input.trim();
         if (!cleanUrl) return false;
-        // যদি http/https না থাকে, অটো অ্যাড করবে
         if (!/^https?:\/\//i.test(cleanUrl)) {
             cleanUrl = "https://" + cleanUrl;
             setUrl(cleanUrl);
         }
-        // প্রফেশনাল ডোমেইন চেক (Regex)
         const urlPattern = new RegExp('^(https?:\\/\\/)?'+ 
             '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ 
             '((\\d{1,3}\\.){3}\\d{1,3}))'+ 
@@ -50,30 +47,45 @@ export default function Home() {
 
     const startProcess = async () => {
         setUrlError("");
-        
-        // ভ্যালিডেশন চেক
         const finalUrl = validateURL(url);
         if (!finalUrl) {
-            setUrlError("Please enter a valid website URL (e.g., example.com)");
+            setUrlError("Please enter a valid website format.");
             return;
         }
         if (!appName || !logoFile) return alert("Fill all fields!");
 
         setStatus("building");
-        setLogs(["> Authenticating secure connection..."]);
+        setLogs(["> Analyzing target URL..."]);
 
         try {
-            pushLog("[INFO] Uploading Logo to Cloud...");
+            // ১. লাইভ ওয়েবসাইট চেকিং 
+            pushLog("[INFO] Verifying if the website is currently LIVE...");
+            const checkRes = await fetch("/api/github", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "check_url", payload: { url: finalUrl } })
+            });
+            const checkData = await checkRes.json();
+            
+            if (!checkData.live) {
+                setUrlError("This website is down, unreachable, or doesn't exist!");
+                setStatus("idle");
+                return;
+            }
+            
+            pushLog("[SUCCESS] Website is alive and responding!");
+
+            // ২. লোগো আপলোড 
+            pushLog("[INFO] Uploading App Logo to Cloud...");
             const formData = new FormData();
             formData.append("image", logoFile);
             const imgRes = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
             const imgData = await imgRes.json();
             if (!imgData.success) throw new Error("Logo upload failed!");
 
-            pushLog("[INFO] Triggering Build Engine with Advanced Settings...");
+            // ৩. অ্যাপ তৈরি কমান্ড
+            pushLog("[INFO] Triggering Build Engine...");
             const triggerRes = await fetch("/api/github", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+                method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     action: "start_build",
                     payload: { url: finalUrl, app_name: appName, icon_url: imgData.data.url, package_name: packageName, version, splash_color: splashColor }
@@ -95,8 +107,7 @@ export default function Home() {
             const res = await fetch("/api/github", { method: "POST", body: JSON.stringify({ action: "get_run_id" }) });
             const data = await res.json();
             if (data.workflow_runs?.length > 0) {
-                const id = data.workflow_runs[0].id;
-                checkStatus(id);
+                checkStatus(data.workflow_runs[0].id);
             } else {
                 setTimeout(fetchRunId, 5000);
             }
@@ -149,25 +160,18 @@ export default function Home() {
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Website URL</label>
-                            <input 
-                                type="url" 
-                                value={url} 
-                                onChange={(e) => { setUrl(e.target.value); setUrlError(""); }} 
-                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none transition ${urlError ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`} 
-                                placeholder="example.com" 
-                            />
+                            <input type="url" value={url} onChange={(e) => { setUrl(e.target.value); setUrlError(""); }} className={`w-full px-4 py-2 border rounded-lg outline-none transition ${urlError ? "border-red-500 focus:ring-red-500" : "border-gray-300 focus:ring-indigo-500"}`} placeholder="example.com" />
                             {urlError && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><FaExclamationCircle /> {urlError}</p>}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">App Name</label>
-                            <input type="text" value={appName} onChange={(e) => setAppName(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="My Website" />
+                            <input type="text" value={appName} onChange={(e) => setAppName(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none" placeholder="My Website" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">App Icon</label>
                             <input type="file" accept="image/png, image/jpeg" onChange={(e) => setLogoFile(e.target.files[0])} className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm" />
                         </div>
 
-                        {/* Advanced Settings */}
                         <div className="border border-gray-200 rounded-lg overflow-hidden mt-4">
                             <button onClick={() => setShowAdvanced(!showAdvanced)} className="w-full bg-gray-50 px-4 py-3 flex items-center justify-between text-sm font-bold text-gray-700 hover:bg-gray-100 transition">
                                 <span className="flex items-center gap-2"><FaCog className="text-indigo-500"/> Advanced Settings</span>
@@ -177,16 +181,16 @@ export default function Home() {
                                 <div className="p-4 bg-gray-50 space-y-3 border-t">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600">Package Name</label>
-                                        <input type="text" value={packageName} onChange={(e) => setPackageName(e.target.value)} className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm mt-1 outline-none focus:ring-1 focus:ring-indigo-500" />
+                                        <input type="text" value={packageName} onChange={(e) => setPackageName(e.target.value)} className="w-full px-3 py-1.5 border rounded text-sm mt-1" />
                                     </div>
                                     <div className="flex gap-4">
                                         <div className="w-1/2">
                                             <label className="block text-xs font-medium text-gray-600">App Version</label>
-                                            <input type="text" value={version} onChange={(e) => setVersion(e.target.value)} className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm mt-1 outline-none focus:ring-1 focus:ring-indigo-500" />
+                                            <input type="text" value={version} onChange={(e) => setVersion(e.target.value)} className="w-full px-3 py-1.5 border rounded text-sm mt-1" />
                                         </div>
                                         <div className="w-1/2">
                                             <label className="block text-xs font-medium text-gray-600">Splash Color</label>
-                                            <input type="color" value={splashColor} onChange={(e) => setSplashColor(e.target.value)} className="w-full h-8 border border-gray-300 rounded mt-1 cursor-pointer" />
+                                            <input type="color" value={splashColor} onChange={(e) => setSplashColor(e.target.value)} className="w-full h-8 border rounded mt-1 cursor-pointer" />
                                         </div>
                                     </div>
                                 </div>
