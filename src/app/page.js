@@ -11,7 +11,8 @@ export default function Home() {
     const [urlError, setUrlError] = useState(""); 
 
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [packageName, setPackageName] = useState("com.mycompany.app");
+    const [packageName, setPackageName] = useState("");
+    const [isPackageEdited, setIsPackageEdited] = useState(false); // নতুন লজিক
     const [version, setVersion] = useState("1.0.0");
     const [splashColor, setSplashColor] = useState("#FFFFFF");
 
@@ -20,14 +21,24 @@ export default function Home() {
     const [downloadUrl, setDownloadUrl] = useState("");
 
     // ================== আপনার তথ্য বসান ==================
-    const IMGBB_API_KEY = "a3b7f162039d6ecfb5980f08165110a6"; // এখানে Key দিন
-    const GITHUB_USERNAME = "mrbadstudent48-dev"; // যেমন: mrbadstudent48-dev
+    const IMGBB_API_KEY = "a3b7f162039d6ecfb5980f08165110a6"; 
+    const GITHUB_USERNAME = "mrbadstudent48-dev"; 
     const REPO_NAME = "apk-maker"; 
     // ====================================================
 
     const terminalEndRef = useRef(null);
     useEffect(() => { terminalEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs]);
     const pushLog = (msg) => setLogs((prev) => [...prev, `> ${msg}`]);
+
+    // ম্যাজিক: App Name লিখলে অটোমেটিক Package Name তৈরি হবে
+    useEffect(() => {
+        if (!isPackageEdited && appName) {
+            const cleanName = appName.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+            setPackageName(`com.${cleanName || "app"}.app`);
+        } else if (!isPackageEdited && !appName) {
+            setPackageName("");
+        }
+    }, [appName, isPackageEdited]);
 
     const validateURL = (input) => {
         let cleanUrl = input.trim();
@@ -53,6 +64,9 @@ export default function Home() {
             return;
         }
         if (!appName || !logoFile) return alert("Fill all fields!");
+
+        // যদি প্যাকেজ নেম ফাঁকা থাকে, তবে ডিফল্ট একটা ধরে নিবে
+        const finalPackageName = packageName.trim() || "com.app.app";
 
         setStatus("building");
         setLogs(["> Analyzing target URL..."]);
@@ -85,7 +99,7 @@ export default function Home() {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     action: "start_build",
-                    payload: { url: finalUrl, app_name: appName, icon_url: imgData.data.url, package_name: packageName, version, splash_color: splashColor }
+                    payload: { url: finalUrl, app_name: appName, icon_url: imgData.data.url, package_name: finalPackageName, version, splash_color: splashColor }
                 })
             });
 
@@ -95,7 +109,7 @@ export default function Home() {
             setTimeout(fetchRunId, 10000);
         } catch (err) {
             pushLog(`[ERROR] ${err.message}`);
-            setStatus("error"); // এখন আর গায়েব হবে না!
+            setStatus("error");
         }
     };
 
@@ -178,7 +192,16 @@ export default function Home() {
                                 <div className="p-4 bg-gray-50 space-y-3 border-t">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600">Package Name</label>
-                                        <input type="text" value={packageName} onChange={(e) => setPackageName(e.target.value)} className="w-full px-3 py-1.5 border rounded text-sm mt-1" />
+                                        <input 
+                                            type="text" 
+                                            value={packageName} 
+                                            onChange={(e) => {
+                                                setPackageName(e.target.value);
+                                                setIsPackageEdited(true); // ইউজার এডিট করলে অটো আপডেট বন্ধ হবে
+                                            }} 
+                                            placeholder="com.mywebsite.app"
+                                            className="w-full px-3 py-1.5 border rounded text-sm mt-1" 
+                                        />
                                     </div>
                                     <div className="flex gap-4">
                                         <div className="w-1/2">
@@ -200,7 +223,6 @@ export default function Home() {
                     </div>
                 )}
 
-                {/* এই সেকশনটিতেই ম্যাজিক করা হয়েছে (building এবং error একসাথে) */}
                 {(status === "building" || status === "error") && (
                     <div className="mt-2">
                         <div className="bg-gray-800 rounded-t-lg px-4 py-2 flex items-center justify-between">
@@ -216,7 +238,6 @@ export default function Home() {
                             <div ref={terminalEndRef} />
                         </div>
                         
-                        {/* যদি এরর আসে, তবে এই বাটনটি দেখাবে */}
                         {status === "error" && (
                             <button onClick={() => { setStatus("idle"); setLogs([]); }} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg mt-4 shadow-lg transition">
                                 Fix Error & Try Again
@@ -236,7 +257,7 @@ export default function Home() {
                         <button onClick={() => window.location.href = downloadUrl} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg mb-3 flex items-center justify-center gap-2">
                             <FaDownload /> Download APK
                         </button>
-                        <button onClick={() => { setStatus("idle"); setLogs([]); setUrl(""); setAppName(""); }} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg">Create Another App</button>
+                        <button onClick={() => { setStatus("idle"); setLogs([]); setUrl(""); setAppName(""); setPackageName(""); setIsPackageEdited(false); }} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg">Create Another App</button>
                     </div>
                 )}
             </div>
