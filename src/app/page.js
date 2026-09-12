@@ -22,7 +22,7 @@ export default function Home() {
     // ================== আপনার তথ্য বসান ==================
     const IMGBB_API_KEY = "a3b7f162039d6ecfb5980f08165110a6"; // এখানে Key দিন
     const GITHUB_USERNAME = "mrbadstudent48-dev"; // যেমন: mrbadstudent48-dev
-    const REPO_NAME = "apk-maker-live"; 
+    const REPO_NAME = "apk-maker"; 
     // ====================================================
 
     const terminalEndRef = useRef(null);
